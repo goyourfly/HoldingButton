@@ -5,6 +5,7 @@
         <attr name="hbl_radius" format="dimension"/>
         <attr name="hbl_icon" format="reference"/>
         <attr name="hbl_cancel_icon" format="reference"/>
+        <attr name="hbl_stop_icon" format="reference"/>
         <attr name="hbl_offset_x" format="dimension"/>
         <attr name="hbl_offset_y" format="dimension"/>
         <attr name="hbl_holding_view" format="reference"/>

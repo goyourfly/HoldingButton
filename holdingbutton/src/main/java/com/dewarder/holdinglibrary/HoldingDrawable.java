@@ -158,12 +158,31 @@ public class HoldingDrawable extends Drawable {
         mAnimator.start();
     }
 
+    public void clickExpand() {
+        notifyOnBeforeExpand();
+        mIsExpanded = true;
+        if (mAnimator != null) {
+            mAnimator.cancel();
+        }
+        mAnimator = createClickExpandValueAnimator();
+        mAnimator.start();
+    }
+
     public void collapse() {
         notifyOnBeforeCollapse();
         if (mAnimator != null) {
             mAnimator.cancel();
         }
         mAnimator = createCollapseValueAnimator();
+        mAnimator.start();
+    }
+
+    public void clickCollapse() {
+        notifyOnBeforeCollapse();
+        if (mAnimator != null) {
+            mAnimator.cancel();
+        }
+        mAnimator = createClickCollapseValueAnimator();
         mAnimator.start();
     }
 
@@ -320,6 +339,26 @@ public class HoldingDrawable extends Drawable {
         return animator;
     }
 
+    private ValueAnimator createClickExpandValueAnimator() {
+        ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+        animator.setDuration(DEFAULT_ANIMATION_DURATION_EXPAND);
+        animator.setInterpolator(new AccelerateInterpolator());
+        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator valueAnimator) {
+                mExpandedScaleFactor[0] = (float) valueAnimator.getAnimatedValue();
+                invalidateSelf();
+            }
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                notifyClickExpanded();
+            }
+        });
+        return animator;
+    }
+
     private ValueAnimator createCollapseValueAnimator() {
         ValueAnimator animator = ValueAnimator.ofFloat(1f, 0f);
         animator.setDuration(DEFAULT_ANIMATION_DURATION_COLLAPSE);
@@ -335,6 +374,26 @@ public class HoldingDrawable extends Drawable {
             @Override
             public void onAnimationEnd(Animator animation) {
                 notifyCollapsed();
+            }
+        });
+        return animator;
+    }
+
+    private ValueAnimator createClickCollapseValueAnimator() {
+        ValueAnimator animator = ValueAnimator.ofFloat(1f, 0f);
+        animator.setDuration(DEFAULT_ANIMATION_DURATION_COLLAPSE);
+        animator.setInterpolator(new AccelerateInterpolator());
+        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator valueAnimator) {
+                mExpandedScaleFactor[0] = (float) valueAnimator.getAnimatedValue();
+                invalidateSelf();
+            }
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                notifyClickCollapsed();
             }
         });
         return animator;
@@ -388,9 +447,20 @@ public class HoldingDrawable extends Drawable {
         }
     }
 
+    private void notifyClickCollapsed() {
+        if (mListener != null) {
+            mListener.onClickCollapse();
+        }
+    }
+
     private void notifyExpanded() {
         if (mListener != null) {
             mListener.onExpand();
+        }
+    }
+    private void notifyClickExpanded() {
+        if (mListener != null) {
+            mListener.onClickExpand();
         }
     }
 }

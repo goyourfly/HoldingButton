@@ -24,6 +24,7 @@ import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
+import android.os.Handler;
 import android.support.annotation.AttrRes;
 import android.support.annotation.ColorInt;
 import android.support.annotation.DrawableRes;
@@ -34,6 +35,7 @@ import android.support.annotation.StyleRes;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
@@ -49,11 +51,17 @@ public class HoldingButtonLayout extends FrameLayout {
     private static final float COLLAPSING_ALPHA_VALUE_START = 0f;
     private static final float COLLAPSING_ALPHA_VALUE_END = 1f;
 
+    private long CLICK_ACTION_THRESHOLD = 0;
+    private long CLICK_ACTION_LONG_PRESS_TIME_THRESHOLD = 0;
+    private long downTime;
+
     private int mHoldingViewId = NO_ID;
     private View mHoldingView;
     private Rect mHoldingViewRect = new Rect();
     private float mCancelOffset = DEFAULT_CANCEL_OFFSET;
     private float mDeltaX;
+
+    private Handler mHandler = new Handler();
 
     private View mHoldingCircle;
     private HoldingDrawable mHoldingDrawable;
@@ -67,6 +75,7 @@ public class HoldingButtonLayout extends FrameLayout {
     private boolean mButtonEnabled = true;
     private boolean mIsCancel = false;
     private boolean mIsExpanded = false;
+    private boolean mIsTouching = false;
 
     private int mCollapsingAnimationDuration;
 
@@ -190,6 +199,11 @@ public class HoldingButtonLayout extends FrameLayout {
         if (mDirection == null) {
             mDirection = DirectionHelper.resolveDefaultSlidingDirection(this);
         }
+
+
+        ViewConfiguration config = ViewConfiguration.get(context);
+        CLICK_ACTION_THRESHOLD = config.getScaledTouchSlop();
+        CLICK_ACTION_LONG_PRESS_TIME_THRESHOLD = ViewConfiguration.getTapTimeout();
     }
 
     @Override
@@ -205,11 +219,12 @@ public class HoldingButtonLayout extends FrameLayout {
     }
 
     @Override
-    public boolean onTouchEvent(MotionEvent event) {
+    public boolean onTouchEvent(final MotionEvent event) {
         final int action = event.getActionMasked();
 
         switch (action) {
             case MotionEvent.ACTION_DOWN: {
+                mIsTouching = true;
                 if (isButtonEnabled() && isViewTouched(mHoldingView, event) && shouldInterceptAnimation()) {
                     mHoldingView.getLocationInWindow(mHoldingViewLocation);
                     getLocationInWindow(mViewLocation);
@@ -229,11 +244,25 @@ public class HoldingButtonLayout extends FrameLayout {
 
                     mDeltaX = event.getRawX() - viewCenterX - offsetX;
 
-                    mHoldingDrawable.expand();
+                    downTime = System.currentTimeMillis();
+
+                    if(!mIsExpanded){
+                        mHandler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                if(mIsTouching){
+                                    mHoldingDrawable.expand();
+                                }else {
+                                    mHoldingDrawable.clickExpand();
+                                }
+                                mIsExpanded = true;
+                            }
+                        },CLICK_ACTION_LONG_PRESS_TIME_THRESHOLD + 50);
+                    }
                     mIsCancel = false;
-                    mIsExpanded = true;
                     return true;
                 }
+                break;
             }
 
             case MotionEvent.ACTION_MOVE: {
@@ -250,17 +279,37 @@ public class HoldingButtonLayout extends FrameLayout {
                     }
                     return true;
                 }
+                break;
             }
 
+            case MotionEvent.ACTION_CANCEL:
             case MotionEvent.ACTION_UP: {
+                mIsTouching = false;
                 if (mIsExpanded) {
-                    submit();
+                    final long now = System.currentTimeMillis();
+                    mHandler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (isAClick( downTime, now)) {
+                                clickSubmit();
+                            } else {
+                                submit();
+                            }
+                        }
+                    },CLICK_ACTION_LONG_PRESS_TIME_THRESHOLD + 50);
                     return true;
                 }
+                break;
             }
         }
 
         return false;
+    }
+
+
+    private boolean isAClick(long startTime, long endTime) {
+        long differenceTime = Math.abs(endTime - startTime);
+        return differenceTime < CLICK_ACTION_LONG_PRESS_TIME_THRESHOLD;
     }
 
     @Override
@@ -284,6 +333,9 @@ public class HoldingButtonLayout extends FrameLayout {
         }
 
         mHoldingCircle = new View(getContext());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            mHoldingCircle.setElevation(8 * 8F);
+        }
         mHoldingCircle.setVisibility(INVISIBLE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             mHoldingCircle.setBackground(mHoldingDrawable);
@@ -343,6 +395,13 @@ public class HoldingButtonLayout extends FrameLayout {
     public void submit() {
         if (mIsExpanded) {
             mHoldingDrawable.collapse();
+            mIsExpanded = false;
+        }
+    }
+
+    public void clickSubmit() {
+        if (mIsExpanded) {
+            mHoldingDrawable.clickCollapse();
             mIsExpanded = false;
         }
     }
@@ -486,6 +545,18 @@ public class HoldingButtonLayout extends FrameLayout {
         }
     }
 
+    private void notifyOnClickExpand() {
+        for (HoldingButtonLayoutListener listener : mListeners) {
+            listener.onClickExpand();
+        }
+    }
+
+    private void notifyOnClickCollapse(boolean isCancel) {
+        for (HoldingButtonLayoutListener listener : mListeners) {
+            listener.onClickCollapse();
+        }
+    }
+
     private void notifyOnOffsetChanged(float offset, boolean isCancel) {
         for (HoldingButtonLayoutListener listener : mListeners) {
             listener.onOffsetChanged(offset, isCancel);
@@ -526,6 +597,28 @@ public class HoldingButtonLayout extends FrameLayout {
         @Override
         public void onCollapse() {
             notifyOnCollapse(mIsCancel);
+            mHoldingCircle.setVisibility(GONE);
+
+            if (mAnimateHoldingView) {
+                mHoldingView.setAlpha(COLLAPSING_ALPHA_VALUE_START);
+                mHoldingView.setScaleY(COLLAPSING_SCALE_Y_VALUE_START);
+                mHoldingView.setVisibility(VISIBLE);
+                mHoldingView.animate()
+                        .alpha(COLLAPSING_ALPHA_VALUE_END)
+                        .scaleY(COLLAPSING_SCALE_Y_VALUE_END)
+                        .setDuration(mCollapsingAnimationDuration)
+                        .start();
+            }
+        }
+
+        @Override
+        public void onClickExpand() {
+            notifyOnClickExpand();
+        }
+
+        @Override
+        public void onClickCollapse() {
+            notifyOnClickCollapse(false);
             mHoldingCircle.setVisibility(GONE);
 
             if (mAnimateHoldingView) {

@@ -25,4 +25,8 @@ public interface HoldingDrawableListener {
     void onExpand();
 
     void onCollapse();
+
+    void onClickExpand();
+
+    void onClickCollapse();
 }

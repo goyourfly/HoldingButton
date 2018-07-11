@@ -27,4 +27,8 @@ public interface HoldingButtonLayoutListener {
     void onCollapse(boolean isCancel);
 
     void onOffsetChanged(float offset, boolean isCancel);
+
+    void onClickExpand();
+
+    void onClickCollapse();
 }

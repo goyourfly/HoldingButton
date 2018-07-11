@@ -37,4 +37,14 @@ public class SimpleHoldingDrawableListener implements HoldingDrawableListener {
     public void onCollapse() {
 
     }
+
+    @Override
+    public void onClickExpand() {
+
+    }
+
+    @Override
+    public void onClickCollapse() {
+
+    }
 }

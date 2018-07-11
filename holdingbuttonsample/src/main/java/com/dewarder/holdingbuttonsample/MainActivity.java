@@ -147,6 +147,19 @@ public class MainActivity extends AppCompatActivity implements HoldingButtonLayo
         mSlideToCancel.setAlpha(1 - SLIDE_TO_CANCEL_ALPHA_MULTIPLIER * offset);
     }
 
+    @Override
+    public void onClickExpand() {
+        Toast.makeText(this, "Action click expand !", Toast.LENGTH_SHORT).show();
+        mStartTime = System.currentTimeMillis();
+        invalidateTimer();
+    }
+
+    @Override
+    public void onClickCollapse() {
+        Toast.makeText(this, "Action click collapse ! Time " + getFormattedTime(), Toast.LENGTH_SHORT).show();
+        stopTimer();
+    }
+
     private void invalidateTimer() {
         mTimerRunnable = new Runnable() {
             @Override

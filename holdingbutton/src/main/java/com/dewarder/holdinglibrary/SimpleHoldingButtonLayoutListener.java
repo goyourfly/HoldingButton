@@ -42,4 +42,14 @@ public class SimpleHoldingButtonLayoutListener implements HoldingButtonLayoutLis
     public void onOffsetChanged(float offset, boolean isCancel) {
 
     }
+
+    @Override
+    public void onClickExpand() {
+
+    }
+
+    @Override
+    public void onClickCollapse() {
+
+    }
 }
