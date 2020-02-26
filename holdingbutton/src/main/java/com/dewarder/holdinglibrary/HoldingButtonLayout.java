@@ -408,6 +408,23 @@ public class HoldingButtonLayout extends FrameLayout {
 
     public void clickExpand(){
         if(!mIsExpanded) {
+            mHoldingView.getLocationInWindow(mHoldingViewLocation);
+            getLocationInWindow(mViewLocation);
+
+            int layoutWidth = getWidth();
+            int viewCenterX = mHoldingViewLocation[0] + mHoldingView.getWidth() / 2;
+            int circleCenterX = mHoldingCircle.getWidth() / 2;
+            int offsetX = mDirection.getOffsetX(mOffset[0]);
+            float translationX = mLayoutDirection.calculateTranslationX(
+                    layoutWidth, viewCenterX, circleCenterX, offsetX);
+
+            int centerY = mHoldingViewLocation[1] + mHoldingView.getHeight() / 2;
+            float translationY = centerY - mHoldingCircle.getHeight() / 2f + mOffset[1];
+
+            mHoldingCircle.setTranslationX(translationX);
+            mHoldingCircle.setTranslationY(translationY);
+            downTime = System.currentTimeMillis();
+
             mHoldingDrawable.clickExpand();
             mIsExpanded = true;
         }
