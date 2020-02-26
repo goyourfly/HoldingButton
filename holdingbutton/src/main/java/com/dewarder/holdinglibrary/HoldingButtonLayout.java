@@ -406,6 +406,13 @@ public class HoldingButtonLayout extends FrameLayout {
         }
     }
 
+    public void clickExpand(){
+        if(!mIsExpanded) {
+            mHoldingDrawable.clickExpand();
+            mIsExpanded = true;
+        }
+    }
+
     public boolean isButtonEnabled() {
         return mButtonEnabled;
     }
